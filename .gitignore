@@ -97,3 +97,4 @@ temp/
 # Ignore executables in bin but keep the directory if needed (or just ignore all exes)
 *.exe
 !bin/.gitkeep
+!bin/ffmpeg.exe
