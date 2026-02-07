@@ -69,13 +69,45 @@ VidScript/
    python main.py
    ```
 
-## ⚙️ 准备工作
+## ⚙️ 配置与准备
 
-1. **准备二进制文件**
-   - 下载 `ffmpeg.exe` 并放置于 `bin/` 目录下。
+### 1. 准备二进制文件
+下载 `ffmpeg.exe` 并放置于 `bin/` 目录下。
 
-2. **配置环境变量**
-   - 复制 `.env.example` 为 `.env` 并填写你的 API Key。
+### 2. 环境变量配置 (.env)
+复制 `.env.example` 为 `.env`，并填写以下配置：
+
+#### 🤖 AI 模型服务
+| 配置项 | 说明 | 默认值 |
+| :--- | :--- | :--- |
+| `LLM_API_KEY` | **(必填)** 大模型 API 密钥 | - |
+| `LLM_BASE_URL` | 大模型 API 地址 | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| `LLM_CHAT_NAME` | 模型名称 | `qwen-plus` |
+| `ASR_MODEL_NAME` | 语音转文字模型 | `fun-asr-mtl` |
+| `ASR_BASE_URL` | ASR API 地址 | `https://dashscope.aliyuncs.com/api/v1` |
+| `LLM_TEMPERATURE`| 生成随机性 (0-1) | `0.7` |
+| `ENABLE_THINKING`| 是否显示思考过程 | `False` |
+
+#### ☁️ 阿里云 OSS (音频存储)
+| 配置项 | 说明 | 示例 |
+| :--- | :--- | :--- |
+| `ALIYUN_ACCESS_KEY` | **(必填)** AccessKey ID | - |
+| `ALIYUN_ACCESS_SECRET`| **(必填)** AccessKey Secret| - |
+| `ALIYUN_OSS_ENDPOINT` | OSS 区域节点 | `https://oss-cn-beijing.aliyuncs.com/` |
+| `ALIYUN_OSS_BUCKET_NAME`| 存储桶名称 | `vid-script` |
+| `ALIYUN_OSS_FOLDER_NAME`| 存储目录 | `voice_file` |
+
+#### 🛠️ 系统设置
+| 配置项 | 说明 | 默认值 |
+| :--- | :--- | :--- |
+| `DEBUG` | 调试模式 | `True` |
+| `LOG_LEVEL` | 日志等级 | `DEBUG` |
+
+### 3. 应用配置 (config.json)
+程序运行时自动管理，包含：
+- `download_path`: 视频下载路径
+- `rewrite_style`: 默认润色风格
+- `custom_rewrite_prompt`: 自定义提示词
 
 ## 📦 打包指南
 
