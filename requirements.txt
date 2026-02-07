@@ -1,0 +1,9 @@
+customtkinter
+yt-dlp
+requests
+httpx
+python-dotenv
+nuitka
+flake8
+# pyinstaller (可选备份)
+# pyinstaller

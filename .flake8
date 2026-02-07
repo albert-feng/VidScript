@@ -1,0 +1,17 @@
+[flake8]
+max-line-length = 120
+exclude = 
+    .git,
+    __pycache__,
+    build,
+    dist,
+    temp,
+    bin,
+    assets,
+    venv,
+    .venv
+ignore = E203, W503
+max-complexity = 10
+count = True
+statistics = True
+show-source = True
