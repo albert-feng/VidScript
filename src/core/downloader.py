@@ -118,8 +118,8 @@ class YtDlpDownloader:
         ydl_opts = {
             # 格式选择：优先 mp4
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            # 路径管理：使用完整标题
-            'outtmpl': str(download_path / '%(title)s.%(ext)s'),
+            # 路径管理：使用完整标题 (限制长度为 20 字符，防止路径过长)
+            'outtmpl': str(download_path / '%(title).20s.%(ext)s'),
             # 日志重定向
             'logger': YtDlpLogger(),
             # 进度钩子

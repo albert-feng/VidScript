@@ -93,7 +93,7 @@ class App(ctk.CTk):
         """初始化侧边栏 (240px)"""
         self.sidebar_frame = ctk.CTkFrame(self, width=240, corner_radius=0)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(7, weight=1)  # 底部留白推到底部
+        self.sidebar_frame.grid_rowconfigure(9, weight=1)  # 底部留白推到底部
 
         # 品牌 Logo
         self.logo_label = ctk.CTkLabel(
@@ -129,11 +129,26 @@ class App(ctk.CTk):
         )
         self.browse_btn.grid(row=0, column=1)
 
+        # 配置组: 模型选择
+        self.model_label = ctk.CTkLabel(
+            self.sidebar_frame, text="模型选择", font=ctk.CTkFont(size=13, weight="bold")
+        )
+        self.model_label.grid(row=3, column=0, padx=20, pady=(5, 2), sticky="w")
+
+        self.model_var = ctk.StringVar(value=self.user_config.get("llm_provider", "DeepSeek"))
+        self.model_dropdown = ctk.CTkComboBox(
+            self.sidebar_frame, values=["DeepSeek", "Qwen"],
+            variable=self.model_var,
+            font=ctk.CTkFont(size=12),
+            command=self._on_model_change
+        )
+        self.model_dropdown.grid(row=4, column=0, padx=20, pady=(2, 5), sticky="ew")
+
         # 配置组: 润色风格
         self.config_label = ctk.CTkLabel(
             self.sidebar_frame, text="润色风格", font=ctk.CTkFont(size=13, weight="bold")
         )
-        self.config_label.grid(row=3, column=0, padx=20, pady=(5, 2), sticky="w")
+        self.config_label.grid(row=5, column=0, padx=20, pady=(5, 2), sticky="w")
 
         saved_style = self.user_config.get("rewrite_style", "深度润色")
         # 兼容旧配置：如果不是列表，转为列表
@@ -141,15 +156,16 @@ class App(ctk.CTk):
             saved_style = [saved_style] if saved_style else ["深度润色"]
 
         self.style_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        self.style_frame.grid(row=4, column=0, padx=20, pady=(2, 5), sticky="ew")
-        
+        self.style_frame.grid(row=6, column=0, padx=20, pady=(2, 5), sticky="ew")
+
         self.style_checkboxes = {}
         styles = ["深度润色", "口语化转换", "学术风提炼", "自定义"]
-        
+
         for style in styles:
             chk = ctk.CTkCheckBox(
                 self.style_frame, text=style, font=ctk.CTkFont(size=12),
-                checkbox_width=20, checkbox_height=20
+                checkbox_width=20, checkbox_height=20,
+                command=lambda s=style: self._on_style_toggle(s)
             )
             chk.pack(anchor="w", pady=2)
             if style in saved_style:
@@ -157,13 +173,11 @@ class App(ctk.CTk):
             self.style_checkboxes[style] = chk
 
             if style == "自定义":
-                def toggle(c=chk):
-                    if c.get():
-                        self.custom_style_frame.grid(row=5, column=0, sticky="ew")
-                    else:
-                        self.custom_style_frame.grid_forget()
-                chk.configure(command=toggle)
-                self.after(100, toggle)
+                # 初始化时根据选中状态显示/隐藏
+                if "自定义" in saved_style:
+                    self.after(100, lambda: self.custom_style_frame.grid(row=7, column=0, sticky="ew"))
+                else:
+                    self.after(100, lambda: self.custom_style_frame.grid_forget())
 
         # 自定义提示词输入框 (默认隐藏)
         self.custom_style_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
@@ -177,6 +191,8 @@ class App(ctk.CTk):
         )
         saved_custom_prompt = self.user_config.get("custom_rewrite_prompt", "")
         self.custom_style_textbox.insert("0.0", saved_custom_prompt)
+        self.custom_style_textbox.bind("<FocusOut>", self._on_custom_prompt_change)
+        self.custom_style_textbox.bind("<KeyRelease>", self._on_custom_prompt_change)
         self.custom_style_textbox.pack(padx=20, pady=(2, 10))
 
         # self.custom_style_frame.grid(row=5, column=0, sticky="ew") # Removed duplicate grid call
@@ -193,20 +209,51 @@ class App(ctk.CTk):
         )
         saved_context = self.user_config.get("rewrite_context", "")
         self.context_textbox.insert("0.0", saved_context)
+        self.context_textbox.bind("<FocusOut>", self._on_context_change)
+        self.context_textbox.bind("<KeyRelease>", self._on_context_change)
         self.context_textbox.pack(padx=20, pady=(2, 10))
 
-        self.context_frame.grid(row=6, column=0, sticky="ew")
+        self.context_frame.grid(row=8, column=0, sticky="ew")
 
-        # 底部占位符 (用于将版本号推到底部)
+    def _on_style_toggle(self, style):
+        """润色风格复选框回调"""
+        # 如果是自定义风格，切换自定义文本框的显示
+        if style == "自定义":
+            if self.style_checkboxes["自定义"].get():
+                self.custom_style_frame.grid(row=7, column=0, sticky="ew")
+            else:
+                self.custom_style_frame.grid_forget()
+
+        # 实时保存所有选中的风格
+        selected_styles = []
+        for s_name, chk in self.style_checkboxes.items():
+            if chk.get() == 1:
+                selected_styles.append(s_name)
+
+        update_config("rewrite_style", selected_styles)
+        logger.info(f"润色风格已更新: {selected_styles}")
+
+    def _on_custom_prompt_change(self, event=None):
+        """自定义润色提示词变更回调"""
+        prompt = self.custom_style_textbox.get("0.0", "end").strip()
+        update_config("custom_rewrite_prompt", prompt)
+        logger.info("自定义润色提示词已更新")
+
+    def _on_context_change(self, event=None):
+        """背景信息变更回调"""
+        context = self.context_textbox.get("0.0", "end").strip()
+        update_config("rewrite_context", context)
+        logger.info("背景信息已更新")
+
         self.spacer = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        self.spacer.grid(row=7, column=0, sticky="nsew")
+        self.spacer.grid(row=9, column=0, sticky="nsew")
 
         # 底部状态栏
         self.version_label = ctk.CTkLabel(
             self.sidebar_frame, text="v1.0.0",
             font=ctk.CTkFont(size=11), text_color="#7F7F7F"
         )
-        self.version_label.grid(row=8, column=0, padx=20, pady=(0, 20))
+        self.version_label.grid(row=10, column=0, padx=20, pady=(0, 20))
 
     def _init_main_area(self):
         """初始化主工作区"""
@@ -278,7 +325,7 @@ class App(ctk.CTk):
         # 文本框初始化
         # 润色讲稿 Tab 动态添加
         self.polished_tabs = []  # 记录当前存在的润色 Tab 名称
-        
+
         self.txt_raw = self._create_script_textbox(self.tab_raw)
         self.txt_logs = ctk.CTkTextbox(
             self.tab_logs, font=ctk.CTkFont(family="Consolas", size=12),
@@ -381,6 +428,11 @@ class App(ctk.CTk):
         except Exception as e:
             logger.error(f"打开文件夹失败: {e}")
 
+    def _on_model_change(self, choice):
+        """模型选择变更回调"""
+        update_config("llm_provider", choice)
+        logger.info(f"模型选择已更新为: {choice}")
+
     def _on_url_change(self, *args):
         """URL 输入框内容变更回调"""
         if self.url_var.get():
@@ -404,15 +456,19 @@ class App(ctk.CTk):
         for style, chk in self.style_checkboxes.items():
             if chk.get() == 1:
                 selected_styles.append(style)
-        
+
         if not selected_styles:
             self.tabview.set("执行日志")
             self.txt_logs.insert("end", "[Error] 请至少选择一种润色风格！\n")
             logger.warning("用户未选择任何润色风格")
             return
-            
+
         # 持久化保存风格
         update_config("rewrite_style", selected_styles)
+
+        # 持久化保存模型选择
+        selected_model = self.model_var.get()
+        update_config("llm_provider", selected_model)
 
         # 如果选择了自定义风格，检查自定义提示词
         custom_prompt = ""
@@ -433,7 +489,8 @@ class App(ctk.CTk):
             "styles": selected_styles,
             "custom_prompt": custom_prompt,
             "context": context,
-            "download_path": self.path_entry.get()
+            "download_path": self.path_entry.get(),
+            "llm_provider": selected_model
         }
         self.on_start_processing(url, config)
 
@@ -498,7 +555,10 @@ class App(ctk.CTk):
     def _save_text_to_file(self, content, title, process_name, save_dir):
         """保存文本内容到文件"""
         try:
-            filename = f"{title}_{process_name}.txt"
+            # 限制标题长度，防止文件名过长
+            safe_title = title[:20] if len(title) > 20 else title
+            filename = f"{safe_title}_{process_name}.txt"
+
             # 处理文件名中的非法字符
             invalid_chars = '<>:"/\\|?*'
             for char in invalid_chars:
@@ -617,12 +677,13 @@ class App(ctk.CTk):
 
             # 步骤 4: 大模型润色
             self.after(0, lambda: self.steps[3].set_state("active"))
-            
-            llm = LLMProvider()
-            
+
+            llm_provider_name = config.get("llm_provider", "DeepSeek")
+            llm = LLMProvider(provider=llm_provider_name)
+
             for style in config['styles']:
                 self.after(0, lambda s=style: self._append_log(f"[Info] 正在进行大模型润色，风格: {s}...\n"))
-                
+
                 polished_text = llm.polish_text(
                     text=asr_result,
                     style=style,
@@ -635,15 +696,15 @@ class App(ctk.CTk):
                     tab_name = f"润色讲稿_{s}"
                     self.tabview.add(tab_name)
                     self.polished_tabs.append(tab_name)
-                    
+
                     # 创建文本框
                     txt_box = self._create_script_textbox(self.tabview.tab(tab_name))
                     txt_box.insert("0.0", text)
-                    
+
                     self.tabview.set(tab_name)
 
                 self.after(0, lambda: _update_ui_with_polished())
-                
+
                 # 保存润色讲稿
                 filename_suffix = f"润色讲稿_{style}"
                 self._save_text_to_file(polished_text, video_title, filename_suffix, config['download_path'])

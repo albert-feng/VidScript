@@ -20,8 +20,8 @@ class ASRProvider:
         self.model = EnvConfig.ASR_MODEL_NAME
 
         if not self.api_key:
-            logger.error("未配置 API Key (DASHSCOPE_API_KEY 或 LLM_API_KEY)")
-            raise ValueError("未配置 API Key，请检查 .env 文件中的 LLM_API_KEY")
+            logger.error("未配置 API Key (DASHSCOPE_API_KEY 或 QWEN_API_KEY)")
+            raise ValueError("未配置 API Key，请检查 .env 文件中的 QWEN_API_KEY")
 
         # 配置全局 API Key 和 Base URL
         dashscope.api_key = self.api_key

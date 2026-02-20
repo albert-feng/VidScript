@@ -82,9 +82,12 @@ VidScript/
 #### 🤖 AI 模型服务
 | 配置项 | 说明 | 默认值 |
 | :--- | :--- | :--- |
-| `LLM_API_KEY` | **(必填)** 大模型 API 密钥 | - |
-| `LLM_BASE_URL` | 大模型 API 地址 | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| `LLM_CHAT_NAME` | 模型名称 | `qwen-plus` |
+| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | - |
+| `DEEPSEEK_BASE_URL` | DeepSeek API 地址 | `https://api.deepseek.com` |
+| `DEEPSEEK_MODEL_NAME` | DeepSeek 模型名称 | `deepseek-chat` |
+| `QWEN_API_KEY` | **(必填)** Qwen API 密钥 (兼作 ASR Key) | - |
+| `QWEN_BASE_URL` | Qwen API 地址 | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| `QWEN_MODEL_NAME` | Qwen 模型名称 | `qwen-plus` |
 | `ASR_MODEL_NAME` | 语音转文字模型 | `fun-asr-mtl` |
 | `ASR_BASE_URL` | ASR API 地址 | `https://dashscope.aliyuncs.com/api/v1` |
 | `LLM_TEMPERATURE`| 生成随机性 (0-1) | `0.7` |

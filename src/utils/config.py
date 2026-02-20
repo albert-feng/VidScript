@@ -32,7 +32,8 @@ PROMPTS_FILE = root_path / "prompts.yaml"
 DEFAULT_CONFIG = {
     "download_path": str(Path.home() / "Documents"),
     "rewrite_style": "深度润色",
-    "custom_rewrite_prompt": ""
+    "custom_rewrite_prompt": "",
+    "llm_provider": "DeepSeek"
 }
 
 
@@ -102,12 +103,6 @@ def reload_env():
 class EnvConfig:
     """环境变量配置"""
     # 初始化类属性
-    LLM_API_KEY = None
-    DASHSCOPE_API_KEY = None
-    ASR_MODEL_NAME = None
-    ASR_BASE_URL = None
-    LLM_BASE_URL = None
-    LLM_CHAT_NAME = None
     LLM_TEMPERATURE = None
     DEBUG = False
     ENABLE_THINKING = False
@@ -118,18 +113,36 @@ class EnvConfig:
     ALIYUN_OSS_BUCKET_NAME = None
     ALIYUN_OSS_FOLDER_NAME = None
 
+    # DeepSeek Config
+    DEEPSEEK_API_KEY = None
+    DEEPSEEK_BASE_URL = None
+    DEEPSEEK_MODEL_NAME = None
+
+    # Qwen Config
+    QWEN_API_KEY = None
+    QWEN_BASE_URL = None
+    QWEN_MODEL_NAME = None
+
     @classmethod
     def reload(cls):
         """重新加载配置"""
         reload_env()
 
-        # API Keys
-        cls.LLM_API_KEY = os.getenv("LLM_API_KEY")
-        cls.DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", cls.LLM_API_KEY)
+        # DeepSeek
+        cls.DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+        cls.DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+        cls.DEEPSEEK_MODEL_NAME = os.getenv("DEEPSEEK_MODEL_NAME", "deepseek-chat")
+
+        # Qwen
+        cls.QWEN_API_KEY = os.getenv("QWEN_API_KEY")
+        cls.QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+        cls.QWEN_MODEL_NAME = os.getenv("QWEN_MODEL_NAME", "qwen-plus")
+
+        # API Keys (ASR uses DashScope which shares key with Qwen)
+        cls.DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", cls.QWEN_API_KEY)
+
         cls.ASR_MODEL_NAME = os.getenv("ASR_MODEL_NAME", "fun-asr-mtl")
         cls.ASR_BASE_URL = os.getenv("ASR_BASE_URL", "https://dashscope.aliyuncs.com/api/v1")
-        cls.LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-        cls.LLM_CHAT_NAME = os.getenv("LLM_CHAT_NAME", "qwen-plus")
         cls.LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
 
         # Settings
