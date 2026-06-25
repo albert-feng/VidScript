@@ -61,13 +61,13 @@ class LLMProvider:
         )
 
         prompts = {
-            "深度润色": styles_config.get("深度润色", default_deep),
+            "修正逐字稿": styles_config.get("修正逐字稿", default_deep),
             "口语化转换": styles_config.get("口语化转换", default_oral),
             "学术风提炼": styles_config.get("学术风提炼", default_academic),
             "自定义": custom_prompt
         }
 
-        specific_prompt = prompts.get(style, prompts["深度润色"])
+        specific_prompt = prompts.get(style, prompts["修正逐字稿"])
 
         final_prompt = f"{base_prompt}\n\n具体要求：\n{specific_prompt}"
 

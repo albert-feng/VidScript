@@ -78,10 +78,11 @@ class YtDlpDownloader:
             # 捕获钩子内部的异常，防止中断下载进程
             logger.debug(f"进度钩子解析异常 (非致命): {str(e)}")
 
-    def get_info(self, url: str) -> dict:
+    def get_info(self, url: str, proxy: Optional[str] = None) -> dict:
         """
         获取视频元数据信息（不下载视频）
         :param url: 视频地址
+        :param proxy: HTTP代理设置，若为 None 则不使用代理
         :return: 包含标题、时长、缩略图等信息的字典
         """
         ydl_opts = {
@@ -90,6 +91,8 @@ class YtDlpDownloader:
             'quiet': True,
             'no_warnings': True,
         }
+        if proxy:
+            ydl_opts['proxy'] = proxy
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -103,12 +106,15 @@ class YtDlpDownloader:
             logger.error(f"获取视频信息失败: {str(e)}")
             raise Exception(f"无法获取视频信息: {str(e)}")
 
-    def download(self, url: str, browser: Optional[str] = None, save_dir: Optional[str] = None) -> dict:
+    def download(  # noqa: C901
+        self, url: str, browser: Optional[str] = None, save_dir: Optional[str] = None, proxy: Optional[str] = None
+    ) -> dict:
         """
         执行下载任务
         :param url: 视频地址
         :param browser: 自动提取 Cookie 的浏览器名称 (chrome, edge, firefox 等)，若为 None 则不提取
         :param save_dir: 自定义保存目录，若为 None 则使用默认 cache 目录
+        :param proxy: HTTP代理设置，若为 None 则不使用代理
         :return: 包含下载成功的本地文件绝对路径和标题的字典
         """
         download_path = Path(save_dir) if save_dir else self.cache_dir
@@ -130,7 +136,13 @@ class YtDlpDownloader:
             'retries': 5,
             # 允许文件名包含非 ASCII 字符（如中文）
             'restrictfilenames': False,
+            # 指定 FFmpeg 路径，避免在新电脑上依赖系统 PATH
+            'ffmpeg_location': str(get_root_path() / "bin"),
         }
+
+        # 代理设置
+        if proxy:
+            ydl_opts['proxy'] = proxy
 
         # 仅在指定了浏览器时才注入 Cookie 配置
         if browser:

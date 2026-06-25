@@ -46,8 +46,9 @@ def build():
         return
 
     files_to_copy = [
-        "prompts.yaml",
-        ".env" 
+        ".env.example",
+        ".env",
+        "prompts.yaml"
     ]
 
     for filename in files_to_copy:
@@ -58,6 +59,23 @@ def build():
             shutil.copy2(src, dst)
         else:
             print(f"警告: 源文件 {src} 不存在，跳过复制")
+
+    # 复制目录
+    dirs_to_copy = [
+        "bin",
+        "assets"
+    ]
+    
+    for dirname in dirs_to_copy:
+        src = Path(dirname)
+        dst = dist_dir / dirname
+        if src.exists():
+            print(f"复制目录 {src} -> {dst}")
+            if dst.exists():
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst)
+        else:
+            print(f"警告: 源目录 {src} 不存在，跳过复制")
 
     print("打包完成！输出目录: dist/VidScript")
     print("请进入 dist/VidScript 目录运行 VidScript.exe")

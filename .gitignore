@@ -98,3 +98,4 @@ temp/
 *.exe
 !bin/.gitkeep
 !bin/ffmpeg.exe
+ffmpeg.zip

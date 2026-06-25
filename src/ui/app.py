@@ -20,6 +20,7 @@ logger = get_logger("UI")
 
 class StepperItem(ctk.CTkFrame):
     """分步进度条中的单个项目"""
+
     def __init__(self, master, text, **kwargs):
         super().__init__(master, fg_color="transparent", **kwargs)
         self.active = False
@@ -99,7 +100,7 @@ class App(ctk.CTk):
         self.logo_label = ctk.CTkLabel(
             self.sidebar_frame,
             text="VidScript",
-            font=ctk.CTkFont(size=22, weight="bold")
+            font=ctk.CTkFont(size=22, weight="bold"),
         )
         self.logo_label.grid(row=0, column=0, padx=20, pady=(30, 40))
 
@@ -108,7 +109,9 @@ class App(ctk.CTk):
 
         # 配置组: 下载路径
         self.path_label = ctk.CTkLabel(
-            self.sidebar_frame, text="下载路径", font=ctk.CTkFont(size=13, weight="bold")
+            self.sidebar_frame,
+            text="下载路径",
+            font=ctk.CTkFont(size=13, weight="bold"),
         )
         self.path_label.grid(row=1, column=0, padx=20, pady=(10, 2), sticky="w")
 
@@ -117,55 +120,68 @@ class App(ctk.CTk):
         self.path_frame.grid_columnconfigure(0, weight=1)
 
         # 使用保存的路径或默认文档路径
-        saved_path = self.user_config.get("download_path", str(Path.home() / "Documents"))
-        self.path_entry = ctk.CTkEntry(self.path_frame, height=28, font=ctk.CTkFont(size=11))
+        saved_path = self.user_config.get(
+            "download_path", str(Path.home() / "Documents")
+        )
+        self.path_entry = ctk.CTkEntry(
+            self.path_frame, height=28, font=ctk.CTkFont(size=11)
+        )
         self.path_entry.insert(0, saved_path)
         self.path_entry.configure(state="readonly")
         self.path_entry.grid(row=0, column=0, sticky="ew", padx=(0, 5))
 
         self.browse_btn = ctk.CTkButton(
-            self.path_frame, text="浏览", width=40, height=28,
-            font=ctk.CTkFont(size=11), command=self._on_browse_click
+            self.path_frame,
+            text="浏览",
+            width=40,
+            height=28,
+            font=ctk.CTkFont(size=11),
+            command=self._on_browse_click,
         )
         self.browse_btn.grid(row=0, column=1)
 
-        # 配置组: 模型选择
-        self.model_label = ctk.CTkLabel(
-            self.sidebar_frame, text="模型选择", font=ctk.CTkFont(size=13, weight="bold")
+        # 配置组: HTTP 代理
+        self.proxy_label = ctk.CTkLabel(
+            self.sidebar_frame,
+            text="HTTP代理 (如 127.0.0.1:10809)",
+            font=ctk.CTkFont(size=13, weight="bold"),
         )
-        self.model_label.grid(row=3, column=0, padx=20, pady=(5, 2), sticky="w")
+        self.proxy_label.grid(row=3, column=0, padx=20, pady=(5, 2), sticky="w")
 
-        self.model_var = ctk.StringVar(value=self.user_config.get("llm_provider", "DeepSeek"))
-        self.model_dropdown = ctk.CTkComboBox(
-            self.sidebar_frame, values=["DeepSeek", "Qwen"],
-            variable=self.model_var,
-            font=ctk.CTkFont(size=12),
-            command=self._on_model_change
+        self.proxy_entry = ctk.CTkEntry(
+            self.sidebar_frame, height=28, font=ctk.CTkFont(size=11)
         )
-        self.model_dropdown.grid(row=4, column=0, padx=20, pady=(2, 5), sticky="ew")
+        saved_proxy = self.user_config.get("http_proxy", "")
+        self.proxy_entry.insert(0, saved_proxy)
+        self.proxy_entry.grid(row=4, column=0, padx=20, pady=(2, 5), sticky="ew")
 
         # 配置组: 润色风格
         self.config_label = ctk.CTkLabel(
-            self.sidebar_frame, text="润色风格", font=ctk.CTkFont(size=13, weight="bold")
+            self.sidebar_frame,
+            text="润色风格",
+            font=ctk.CTkFont(size=13, weight="bold"),
         )
         self.config_label.grid(row=5, column=0, padx=20, pady=(5, 2), sticky="w")
 
-        saved_style = self.user_config.get("rewrite_style", "深度润色")
+        saved_style = self.user_config.get("rewrite_style", "修正逐字稿")
         # 兼容旧配置：如果不是列表，转为列表
         if not isinstance(saved_style, list):
-            saved_style = [saved_style] if saved_style else ["深度润色"]
+            saved_style = [saved_style] if saved_style else ["修正逐字稿"]
 
         self.style_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
         self.style_frame.grid(row=6, column=0, padx=20, pady=(2, 5), sticky="ew")
 
         self.style_checkboxes = {}
-        styles = ["深度润色", "口语化转换", "学术风提炼", "自定义"]
+        styles = ["不润色", "修正逐字稿", "口语化转换", "学术风提炼", "自定义"]
 
         for style in styles:
             chk = ctk.CTkCheckBox(
-                self.style_frame, text=style, font=ctk.CTkFont(size=12),
-                checkbox_width=20, checkbox_height=20,
-                command=lambda s=style: self._on_style_toggle(s)
+                self.style_frame,
+                text=style,
+                font=ctk.CTkFont(size=12),
+                checkbox_width=20,
+                checkbox_height=20,
+                command=lambda s=style: self._on_style_toggle(s),
             )
             chk.pack(anchor="w", pady=2)
             if style in saved_style:
@@ -173,16 +189,24 @@ class App(ctk.CTk):
             self.style_checkboxes[style] = chk
 
             if style == "自定义":
-                # 初始化时根据选中状态显示/隐藏
-                if "自定义" in saved_style:
-                    self.after(100, lambda: self.custom_style_frame.grid(row=7, column=0, sticky="ew"))
-                else:
-                    self.after(100, lambda: self.custom_style_frame.grid_forget())
+
+                def toggle(c=chk):
+                    if c.get():
+                        self.custom_style_frame.grid(row=7, column=0, sticky="ew")
+                    else:
+                        self.custom_style_frame.grid_forget()
+
+                chk.configure(command=toggle)
+                self.after(100, toggle)
 
         # 自定义提示词输入框 (默认隐藏)
-        self.custom_style_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
+        self.custom_style_frame = ctk.CTkFrame(
+            self.sidebar_frame, fg_color="transparent"
+        )
         self.custom_style_label = ctk.CTkLabel(
-            self.custom_style_frame, text="自定义润色", font=ctk.CTkFont(size=13, weight="bold")
+            self.custom_style_frame,
+            text="自定义润色",
+            font=ctk.CTkFont(size=13, weight="bold"),
         )
         self.custom_style_label.pack(padx=20, pady=(0, 2), anchor="w")
 
@@ -195,12 +219,14 @@ class App(ctk.CTk):
         self.custom_style_textbox.bind("<KeyRelease>", self._on_custom_prompt_change)
         self.custom_style_textbox.pack(padx=20, pady=(2, 10))
 
-        # self.custom_style_frame.grid(row=5, column=0, sticky="ew") # Removed duplicate grid call
+        # self.custom_style_frame.grid(row=7, column=0, sticky="ew") # Removed duplicate grid call
 
         # 背景信息输入框
         self.context_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
         self.context_label = ctk.CTkLabel(
-            self.context_frame, text="背景信息 (可选)", font=ctk.CTkFont(size=13, weight="bold")
+            self.context_frame,
+            text="背景信息 (可选)",
+            font=ctk.CTkFont(size=13, weight="bold"),
         )
         self.context_label.pack(padx=20, pady=(0, 2), anchor="w")
 
@@ -215,43 +241,15 @@ class App(ctk.CTk):
 
         self.context_frame.grid(row=8, column=0, sticky="ew")
 
-    def _on_style_toggle(self, style):
-        """润色风格复选框回调"""
-        # 如果是自定义风格，切换自定义文本框的显示
-        if style == "自定义":
-            if self.style_checkboxes["自定义"].get():
-                self.custom_style_frame.grid(row=7, column=0, sticky="ew")
-            else:
-                self.custom_style_frame.grid_forget()
-
-        # 实时保存所有选中的风格
-        selected_styles = []
-        for s_name, chk in self.style_checkboxes.items():
-            if chk.get() == 1:
-                selected_styles.append(s_name)
-
-        update_config("rewrite_style", selected_styles)
-        logger.info(f"润色风格已更新: {selected_styles}")
-
-    def _on_custom_prompt_change(self, event=None):
-        """自定义润色提示词变更回调"""
-        prompt = self.custom_style_textbox.get("0.0", "end").strip()
-        update_config("custom_rewrite_prompt", prompt)
-        logger.info("自定义润色提示词已更新")
-
-    def _on_context_change(self, event=None):
-        """背景信息变更回调"""
-        context = self.context_textbox.get("0.0", "end").strip()
-        update_config("rewrite_context", context)
-        logger.info("背景信息已更新")
-
         self.spacer = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
         self.spacer.grid(row=9, column=0, sticky="nsew")
 
         # 底部状态栏
         self.version_label = ctk.CTkLabel(
-            self.sidebar_frame, text="v1.0.0",
-            font=ctk.CTkFont(size=11), text_color="#7F7F7F"
+            self.sidebar_frame,
+            text="v1.0.0",
+            font=ctk.CTkFont(size=11),
+            text_color="#7F7F7F",
         )
         self.version_label.grid(row=10, column=0, padx=20, pady=(0, 20))
 
@@ -276,35 +274,53 @@ class App(ctk.CTk):
         self.url_var.trace_add("write", self._on_url_change)
 
         self.url_entry = ctk.CTkEntry(
-            self.url_container, placeholder_text="请输入视频 URL (如 YouTube, Bilibili...)",
-            height=45, font=ctk.CTkFont(size=14),
-            textvariable=self.url_var
+            self.url_container,
+            placeholder_text="请输入视频 URL (如 YouTube, Bilibili...)",
+            height=45,
+            font=ctk.CTkFont(size=14),
+            textvariable=self.url_var,
         )
         self.url_entry.grid(row=0, column=0, sticky="ew")
 
         # 清空按钮 (初始隐藏)
         self.clear_btn = ctk.CTkButton(
-            self.url_container, text="×", width=30, height=30,
-            fg_color="transparent", hover_color="#3B3B3B", text_color="#A9B7C6",
+            self.url_container,
+            text="×",
+            width=30,
+            height=30,
+            fg_color="transparent",
+            hover_color="#3B3B3B",
+            text_color="#A9B7C6",
             font=ctk.CTkFont(size=20),
-            command=self._on_clear_url
+            command=self._on_clear_url,
         )
 
         self.start_btn = ctk.CTkButton(
-            self.input_frame, text="开始转换", width=120, height=45,
-            font=ctk.CTkFont(weight="bold"), command=self._on_start_click
+            self.input_frame,
+            text="开始转换",
+            width=120,
+            height=45,
+            font=ctk.CTkFont(weight="bold"),
+            command=self._on_start_click,
         )
         self.start_btn.grid(row=0, column=2)
 
         self.select_file_btn = ctk.CTkButton(
-            self.input_frame, text="选择文件", width=100, height=45,
-            fg_color="#3B3B3B", hover_color="#4B4B4B",
-            font=ctk.CTkFont(size=14), command=self._on_select_file
+            self.input_frame,
+            text="选择文件",
+            width=100,
+            height=45,
+            fg_color="#3B3B3B",
+            hover_color="#4B4B4B",
+            font=ctk.CTkFont(size=14),
+            command=self._on_select_file,
         )
         self.select_file_btn.grid(row=0, column=1, padx=(10, 10))
 
         # --- 进度监控 (Stepper) ---
-        self.stepper_frame = ctk.CTkFrame(self.main_container, height=80, fg_color="#1A1A1A")
+        self.stepper_frame = ctk.CTkFrame(
+            self.main_container, height=80, fg_color="#1A1A1A"
+        )
         self.stepper_frame.grid(row=1, column=0, sticky="ew", pady=(0, 20))
         self.stepper_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
@@ -328,8 +344,10 @@ class App(ctk.CTk):
 
         self.txt_raw = self._create_script_textbox(self.tab_raw)
         self.txt_logs = ctk.CTkTextbox(
-            self.tab_logs, font=ctk.CTkFont(family="Consolas", size=12),
-            fg_color="#000000", text_color="#A9B7C6"
+            self.tab_logs,
+            font=ctk.CTkFont(family="Consolas", size=12),
+            fg_color="#000000",
+            text_color="#A9B7C6",
         )
         self.txt_logs.pack(fill="both", expand=True)
 
@@ -338,8 +356,12 @@ class App(ctk.CTk):
         self.action_frame.grid(row=3, column=0, sticky="ew", pady=(20, 0))
 
         self.open_dir_btn = ctk.CTkButton(
-            self.action_frame, text="打开文件夹", width=100, fg_color="#3B3B3B", hover_color="#4B4B4B",
-            command=self._on_open_dir_click
+            self.action_frame,
+            text="打开文件夹",
+            width=100,
+            fg_color="#3B3B3B",
+            hover_color="#4B4B4B",
+            command=self._on_open_dir_click,
         )
         self.open_dir_btn.pack(side="right")
 
@@ -355,16 +377,18 @@ class App(ctk.CTk):
 
         # 复制按钮
         copy_btn = ctk.CTkButton(
-            toolbar, text="复制内容", width=80, height=24,
+            toolbar,
+            text="复制内容",
+            width=80,
+            height=24,
             font=ctk.CTkFont(size=12),
-            command=lambda: self._copy_to_clipboard(txt)
+            command=lambda: self._copy_to_clipboard(txt),
         )
         copy_btn.pack(side="right")
 
         # 文本框
         txt = ctk.CTkTextbox(
-            container, font=ctk.CTkFont(size=14),
-            border_width=1, border_color="#3B3B3B"
+            container, font=ctk.CTkFont(size=14), border_width=1, border_color="#3B3B3B"
         )
         txt.pack(fill="both", expand=True)
         return txt
@@ -387,10 +411,13 @@ class App(ctk.CTk):
         """选择本地视频/音频文件"""
         file_path = filedialog.askopenfilename(
             filetypes=[
-                ("Media Files", "*.mp4;*.mkv;*.avi;*.mov;*.flv;*.webm;*.mp3;*.wav;*.m4a;*.flac"),
+                (
+                    "Media Files",
+                    "*.mp4;*.mkv;*.avi;*.mov;*.flv;*.webm;*.mp3;*.wav;*.m4a;*.flac",
+                ),
                 ("Video Files", "*.mp4;*.mkv;*.avi;*.mov;*.flv;*.webm"),
                 ("Audio Files", "*.mp3;*.wav;*.m4a;*.flac"),
-                ("All Files", "*.*")
+                ("All Files", "*.*"),
             ]
         )
         if file_path:
@@ -476,10 +503,16 @@ class App(ctk.CTk):
             custom_prompt = self.custom_style_textbox.get("0.0", "end").strip()
             if not custom_prompt:
                 self.tabview.set("执行日志")
-                self.txt_logs.insert("end", "[Error] 选中了自定义风格，请输入自定义润色提示词！\n")
+                self.txt_logs.insert(
+                    "end", "[Error] 选中了自定义风格，请输入自定义润色提示词！\n"
+                )
                 logger.warning("用户选择了自定义风格但未输入提示词")
                 return
             update_config("custom_rewrite_prompt", custom_prompt)
+
+        # 获取代理配置
+        http_proxy = self.proxy_entry.get().strip()
+        update_config("http_proxy", http_proxy)
 
         # 获取背景信息
         context = self.context_textbox.get("0.0", "end").strip()
@@ -490,7 +523,7 @@ class App(ctk.CTk):
             "custom_prompt": custom_prompt,
             "context": context,
             "download_path": self.path_entry.get(),
-            "llm_provider": selected_model
+            "http_proxy": http_proxy,
         }
         self.on_start_processing(url, config)
 
@@ -507,13 +540,20 @@ class App(ctk.CTk):
 
         self.txt_logs.insert("end", f"[Info] 开始处理 URL: {url}\n")
 
-        styles_display = ", ".join(config['styles'])
-        if "自定义" in config['styles'] and config['custom_prompt']:
-            styles_display = styles_display.replace("自定义", f"自定义 ({config['custom_prompt'][:20]}...)")
+        styles_display = ", ".join(config["styles"])
+        if "自定义" in config["styles"] and config["custom_prompt"]:
+            styles_display = styles_display.replace(
+                "自定义", f"自定义 ({config['custom_prompt'][:20]}...)"
+            )
 
-        self.txt_logs.insert("end", f"[Config] 风格: {styles_display}, 下载路径: {config['download_path']}\n")
-        if config.get('context'):
-            self.txt_logs.insert("end", f"[Config] 背景信息: {config['context'][:30]}...\n")
+        self.txt_logs.insert(
+            "end",
+            f"[Config] 风格: {styles_display}, 下载路径: {config['download_path']}\n",
+        )
+        if config.get("context"):
+            self.txt_logs.insert(
+                "end", f"[Config] 背景信息: {config['context'][:30]}...\n"
+            )
 
         # 自动切换到“执行日志”标签页
         self.tabview.set("执行日志")
@@ -535,14 +575,14 @@ class App(ctk.CTk):
     def _update_progress(self, data: dict):
         """处理来自下载器的进度回调"""
         try:
-            status = data.get('status')
-            if status == 'downloading':
-                percentage = data.get('percentage', 0)
-                speed = data.get('speed', 'N/A')
-                eta = data.get('eta', 'N/A')
+            status = data.get("status")
+            if status == "downloading":
+                percentage = data.get("percentage", 0)
+                speed = data.get("speed", "N/A")
+                eta = data.get("eta", "N/A")
                 msg = f"[下载] {percentage}% | 速度: {speed} | ETA: {eta}\n"
                 self.after(0, lambda: self._append_log(msg))
-            elif status == 'finished':
+            elif status == "finished":
                 self.after(0, lambda: self._append_log("[下载] 视频文件下载完成！\n"))
         except Exception as e:
             logger.warning(f"更新进度条时发生非致命错误: {str(e)}")
@@ -562,18 +602,28 @@ class App(ctk.CTk):
             # 处理文件名中的非法字符
             invalid_chars = '<>:"/\\|?*'
             for char in invalid_chars:
-                filename = filename.replace(char, '_')
+                filename = filename.replace(char, "_")
 
             filepath = os.path.join(save_dir, filename)
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.write(content)
 
-            self.after(0, lambda: self._append_log(f"[Info] 已保存{process_name}文件: {filename}\n"))
+            self.after(
+                0,
+                lambda: self._append_log(
+                    f"[Info] 已保存{process_name}文件: {filename}\n"
+                ),
+            )
             return filepath
         except Exception as e:
             logger.error(f"保存文件失败: {e}")
             error_msg = str(e)
-            self.after(0, lambda: self._append_log(f"[Warning] 保存{process_name}文件失败: {error_msg}\n"))
+            self.after(
+                0,
+                lambda: self._append_log(
+                    f"[Warning] 保存{process_name}文件失败: {error_msg}\n"
+                ),
+            )
             return None
 
     def _prepare_video_file(self, url, config):
@@ -589,13 +639,18 @@ class App(ctk.CTk):
             ext = os.path.splitext(filename)[1].lower()
 
             # 检查是否为音频文件
-            if ext in ['.mp3', '.wav', '.m4a', '.flac']:
+            if ext in [".mp3", ".wav", ".m4a", ".flac"]:
                 is_audio_file = True
-                self.after(0, lambda: self._append_log("[Info] 识别为音频文件，将直接进行语音识别\n"))
+                self.after(
+                    0,
+                    lambda: self._append_log(
+                        "[Info] 识别为音频文件，将直接进行语音识别\n"
+                    ),
+                )
 
             # 复制文件到下载目录
             try:
-                dest_dir = config['download_path']
+                dest_dir = config["download_path"]
                 if not os.path.exists(dest_dir):
                     os.makedirs(dest_dir)
 
@@ -603,15 +658,25 @@ class App(ctk.CTk):
 
                 # 如果源文件和目标文件不同，则进行复制
                 if os.path.abspath(url) != os.path.abspath(dest_path):
-                    self.after(0, lambda: self._append_log("[Info] 正在复制文件到下载目录...\n"))
+                    self.after(
+                        0,
+                        lambda: self._append_log("[Info] 正在复制文件到下载目录...\n"),
+                    )
                     shutil.copy2(url, dest_path)
                     video_path = dest_path
                 else:
                     video_path = url
 
                 self.after(0, lambda: self.steps[0].set_state("completed"))
-                self.after(0, lambda: self._append_log(f"[Success] 本地文件准备就绪: {video_title}\n"))
-                self.after(0, lambda: self._append_log(f"[Info] 文件路径: {video_path}\n"))
+                self.after(
+                    0,
+                    lambda: self._append_log(
+                        f"[Success] 本地文件准备就绪: {video_title}\n"
+                    ),
+                )
+                self.after(
+                    0, lambda: self._append_log(f"[Info] 文件路径: {video_path}\n")
+                )
 
             except Exception as e:
                 raise Exception(f"本地文件处理失败: {str(e)}")
@@ -619,11 +684,15 @@ class App(ctk.CTk):
             downloader = YtDlpDownloader(on_progress_update=self._update_progress)
 
             # 执行标准下载
-            result = downloader.download(url, save_dir=config['download_path'])
-            video_path = result['path']
-            video_title = result['title']
+            result = downloader.download(
+                url, save_dir=config["download_path"], proxy=config.get("http_proxy")
+            )
+            video_path = result["path"]
+            video_title = result["title"]
             self.after(0, lambda: self.steps[0].set_state("completed"))
-            self.after(0, lambda: self._append_log(f"[Success] 视频已下载: {video_title}\n"))
+            self.after(
+                0, lambda: self._append_log(f"[Success] 视频已下载: {video_title}\n")
+            )
             self.after(0, lambda: self._append_log(f"[Info] 保存路径: {video_path}\n"))
 
         return video_path, video_title, is_audio_file
@@ -634,29 +703,48 @@ class App(ctk.CTk):
             # 步骤 1: 视频下载 / 本地文件处理
             self.after(0, lambda: self.steps[0].set_state("active"))
 
-            video_path, video_title, is_audio_file = self._prepare_video_file(url, config)
+            video_path, video_title, is_audio_file = self._prepare_video_file(
+                url, config
+            )
 
             # 步骤 2: 音频提取 (如果是音频文件则跳过)
             audio_path = ""
             if is_audio_file:
                 self.after(0, lambda: self.steps[1].set_state("completed"))
-                self.after(0, lambda: self._append_log("[Info] 跳过音频提取步骤 (直接使用源音频)\n"))
+                self.after(
+                    0,
+                    lambda: self._append_log(
+                        "[Info] 跳过音频提取步骤 (直接使用源音频)\n"
+                    ),
+                )
                 audio_path = video_path
             else:
                 self.after(0, lambda: self.steps[1].set_state("active"))
                 extractor = AudioExtractor()
                 audio_path = extractor.extract_mp3(video_path)
                 self.after(0, lambda: self.steps[1].set_state("completed"))
-                self.after(0, lambda: self._append_log(f"[Success] 音频已提取: {Path(audio_path).name}\n"))
+                self.after(
+                    0,
+                    lambda: self._append_log(
+                        f"[Success] 音频已提取: {Path(audio_path).name}\n"
+                    ),
+                )
 
             # 步骤 3: 上传 OSS 并进行语音识别
             self.after(0, lambda: self.steps[2].set_state("active"))
-            self.after(0, lambda: self._append_log("[Info] 正在上传音频到云端并进行语音识别...\n"))
+            self.after(
+                0,
+                lambda: self._append_log(
+                    "[Info] 正在上传音频到云端并进行语音识别...\n"
+                ),
+            )
 
             # 3.1 上传到 OSS
             oss = OSSProvider()
             signed_url = oss.upload_file(audio_path)
-            self.after(0, lambda: self._append_log("[Success] 音频已上传，临时链接已生成\n"))
+            self.after(
+                0, lambda: self._append_log("[Success] 音频已上传，临时链接已生成\n")
+            )
 
             # 3.2 调用 ASR
             asr = ASRProvider()
@@ -670,7 +758,9 @@ class App(ctk.CTk):
 
             self.after(0, _update_ui_with_asr)
             # 保存原始文稿
-            self._save_text_to_file(asr_result, video_title, "原始文稿", config['download_path'])
+            self._save_text_to_file(
+                asr_result, video_title, "原始文稿", config["download_path"]
+            )
 
             self.after(0, lambda: self.steps[2].set_state("completed"))
             self.after(0, lambda: self._append_log("[Success] 语音识别完成！\n"))
@@ -678,17 +768,32 @@ class App(ctk.CTk):
             # 步骤 4: 大模型润色
             self.after(0, lambda: self.steps[3].set_state("active"))
 
-            llm_provider_name = config.get("llm_provider", "DeepSeek")
-            llm = LLMProvider(provider=llm_provider_name)
+            has_polish_task = any(s != "不润色" for s in config["styles"])
+            if has_polish_task:
+                llm = LLMProvider()
 
-            for style in config['styles']:
-                self.after(0, lambda s=style: self._append_log(f"[Info] 正在进行大模型润色，风格: {s}...\n"))
+            for style in config["styles"]:
+                if style == "不润色":
+                    self.after(
+                        0,
+                        lambda: self._append_log(
+                            "[Info] 已选择 [不润色]，跳过大模型润色流程。\n"
+                        ),
+                    )
+                    continue
+
+                self.after(
+                    0,
+                    lambda s=style: self._append_log(
+                        f"[Info] 正在进行大模型润色，风格: {s}...\n"
+                    ),
+                )
 
                 polished_text = llm.polish_text(
                     text=asr_result,
                     style=style,
-                    custom_prompt=config.get('custom_prompt', ""),
-                    context=config.get('context', "")
+                    custom_prompt=config.get("custom_prompt", ""),
+                    context=config.get("context", ""),
                 )
 
                 # 动态创建 Tab 并更新 UI
@@ -707,8 +812,15 @@ class App(ctk.CTk):
 
                 # 保存润色讲稿
                 filename_suffix = f"润色讲稿_{style}"
-                self._save_text_to_file(polished_text, video_title, filename_suffix, config['download_path'])
-                self.after(0, lambda s=style: self._append_log(f"[Success] 风格 [{s}] 润色完成！\n"))
+                self._save_text_to_file(
+                    polished_text, video_title, filename_suffix, config["download_path"]
+                )
+                self.after(
+                    0,
+                    lambda s=style: self._append_log(
+                        f"[Success] 风格 [{s}] 润色完成！\n"
+                    ),
+                )
 
             self.after(0, lambda: self.steps[3].set_state("completed"))
             self.after(0, lambda: self._append_log("[Done] 所有处理步骤已完成！\n"))
@@ -719,11 +831,14 @@ class App(ctk.CTk):
             self.after(0, lambda: self._append_log(f"[Error] 流程中断: {error_msg}\n"))
         finally:
             self.is_processing = False
-            self.after(0, lambda: self.start_btn.configure(state="normal", text="开始转换"))
+            self.after(
+                0, lambda: self.start_btn.configure(state="normal", text="开始转换")
+            )
 
     def _mock_workflow(self):
         """模拟后台业务流"""
         import time
+
         try:
             for i in range(len(self.steps)):
                 # 1. 设置当前步骤为活动状态
@@ -734,14 +849,21 @@ class App(ctk.CTk):
                 self.after(0, lambda idx=i: self.steps[idx].set_state("completed"))
 
             # 模拟生成内容
-            self.after(0, lambda: self.txt_polished.insert("0.0", "# 润色后的讲稿示例\n\n这是经过 AI 优化后的内容..."))
+            self.after(
+                0,
+                lambda: self.txt_polished.insert(
+                    "0.0", "# 润色后的讲稿示例\n\n这是经过 AI 优化后的内容..."
+                ),
+            )
             self.after(0, lambda: self.txt_raw.insert("0.0", "原始识别文稿内容..."))
 
         except Exception as e:
             logger.error(f"处理流程出错: {e}")
         finally:
             self.is_processing = False
-            self.after(0, lambda: self.start_btn.configure(state="normal", text="开始转换"))
+            self.after(
+                0, lambda: self.start_btn.configure(state="normal", text="开始转换")
+            )
 
     def run(self):
         self.mainloop()

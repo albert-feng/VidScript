@@ -31,9 +31,15 @@ PROMPTS_FILE = root_path / "prompts.yaml"
 
 DEFAULT_CONFIG = {
     "download_path": str(Path.home() / "Documents"),
+<<<<<<< HEAD
     "rewrite_style": "深度润色",
     "custom_rewrite_prompt": "",
     "llm_provider": "DeepSeek"
+=======
+    "rewrite_style": "修正逐字稿",
+    "custom_rewrite_prompt": "",
+    "http_proxy": ""
+>>>>>>> 555ca24 (修改润色设置)
 }
 
 
