@@ -1,4 +1,5 @@
 import os
+import shutil
 import yt_dlp
 from pathlib import Path
 from typing import Callable, Optional
@@ -9,6 +10,21 @@ from ..utils.paths import get_root_path
 logger = get_logger("Downloader")
 
 
+def _is_dir_writable(path: Path) -> bool:
+    """检查目录是否可写：不存在则尝试创建，存在则尝试写入临时文件"""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        test_file = path / "_vidscript_write_test.tmp"
+        try:
+            test_file.write_text("ok", encoding="utf-8")
+            test_file.unlink(missing_ok=True)
+            return True
+        except (PermissionError, OSError):
+            return False
+    except (PermissionError, OSError):
+        return False
+
+
 class YtDlpLogger:
     """
     自定义 Logger 类，用于将 yt-dlp 的内部日志重定向到 Python 标准 logging 模块
@@ -16,7 +32,7 @@ class YtDlpLogger:
 
     def debug(self, msg):
         # 过滤掉 yt-dlp 冗长的进度条调试信息
-        if not msg.startswith('[debug] '):
+        if not msg.startswith("[debug] "):
             logger.debug(msg)
 
     def info(self, msg):
@@ -52,25 +68,25 @@ class YtDlpDownloader:
         解析百分比、速度、ETA 并通过回调通知外部
         """
         try:
-            if d['status'] == 'downloading':
+            if d["status"] == "downloading":
                 # 提取百分比
-                total = d.get('total_bytes') or d.get('total_bytes_estimate')
-                downloaded = d.get('downloaded_bytes', 0)
+                total = d.get("total_bytes") or d.get("total_bytes_estimate")
+                downloaded = d.get("downloaded_bytes", 0)
                 percentage = (downloaded / total * 100) if total else 0
 
                 # 封装进度数据
                 progress_data = {
                     "status": "downloading",
                     "percentage": round(percentage, 2),
-                    "speed": d.get('_speed_str', 'N/A'),
-                    "eta": d.get('_eta_str', 'N/A'),
-                    "filename": os.path.basename(d.get('filename', ''))
+                    "speed": d.get("_speed_str", "N/A"),
+                    "eta": d.get("_eta_str", "N/A"),
+                    "filename": os.path.basename(d.get("filename", "")),
                 }
 
                 if self.on_progress_update:
                     self.on_progress_update(progress_data)
 
-            elif d['status'] == 'finished':
+            elif d["status"] == "finished":
                 logger.info(f"文件下载完成: {d['filename']}")
                 if self.on_progress_update:
                     self.on_progress_update({"status": "finished", "percentage": 100.0})
@@ -86,13 +102,13 @@ class YtDlpDownloader:
         :return: 包含标题、时长、缩略图等信息的字典
         """
         ydl_opts = {
-            'logger': YtDlpLogger(),
-            'nocheckcertificate': True,
-            'quiet': True,
-            'no_warnings': True,
+            "logger": YtDlpLogger(),
+            "nocheckcertificate": True,
+            "quiet": True,
+            "no_warnings": True,
         }
         if proxy:
-            ydl_opts['proxy'] = proxy
+            ydl_opts["proxy"] = proxy
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -100,14 +116,19 @@ class YtDlpDownloader:
                     "title": info.get("title", "Unknown Title"),
                     "duration": info.get("duration", 0),
                     "thumbnail": info.get("thumbnail", ""),
-                    "ext": info.get("ext", "mp4")
+                    "ext": info.get("ext", "mp4"),
                 }
         except Exception as e:
             logger.error(f"获取视频信息失败: {str(e)}")
             raise Exception(f"无法获取视频信息: {str(e)}")
 
     def download(  # noqa: C901
-        self, url: str, browser: Optional[str] = None, save_dir: Optional[str] = None, proxy: Optional[str] = None
+        self,
+        url: str,
+        browser: Optional[str] = None,
+        save_dir: Optional[str] = None,
+        proxy: Optional[str] = None,
+        cookie_file: Optional[str] = None,
     ) -> dict:
         """
         执行下载任务
@@ -115,42 +136,75 @@ class YtDlpDownloader:
         :param browser: 自动提取 Cookie 的浏览器名称 (chrome, edge, firefox 等)，若为 None 则不提取
         :param save_dir: 自定义保存目录，若为 None 则使用默认 cache 目录
         :param proxy: HTTP代理设置，若为 None 则不使用代理
+        :param cookie_file: Cookie 文件路径 (Netscape 格式)，若为 None 则不加载
         :return: 包含下载成功的本地文件绝对路径和标题的字典
         """
         download_path = Path(save_dir) if save_dir else self.cache_dir
-        if not download_path.exists():
-            download_path.mkdir(parents=True, exist_ok=True)
+
+        # 检查目录是否可写，不可用时自动回退到 cache 目录
+        if not _is_dir_writable(download_path):
+            logger.warning(f"下载目录不可写 ({download_path})，回退到缓存目录")
+            download_path = self.cache_dir
+            if not download_path.exists():
+                download_path.mkdir(parents=True, exist_ok=True)
 
         ydl_opts = {
+<<<<<<< HEAD
             # 格式选择：优先 mp4
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             # 路径管理：使用完整标题 (限制长度为 20 字符，防止路径过长)
             'outtmpl': str(download_path / '%(title).20s.%(ext)s'),
+=======
+            # 格式选择：优先获取最佳视频+音频流合并，若平台无分离流则回退到最佳单一格式
+            "format": "bestvideo*+bestaudio/best",
+            # 路径管理：使用完整标题
+            "outtmpl": str(download_path / "%(title)s.%(ext)s"),
+>>>>>>> 5f1a2c5 (fix bug)
             # 日志重定向
-            'logger': YtDlpLogger(),
+            "logger": YtDlpLogger(),
             # 进度钩子
-            'progress_hooks': [self._progress_hook],
+            "progress_hooks": [self._progress_hook],
             # 安全与兼容性
-            'nocheckcertificate': True,
+            "nocheckcertificate": True,
             # 限制重试次数
-            'retries': 5,
+            "retries": 5,
             # 允许文件名包含非 ASCII 字符（如中文）
-            'restrictfilenames': False,
+            "restrictfilenames": False,
             # 指定 FFmpeg 路径，避免在新电脑上依赖系统 PATH
-            'ffmpeg_location': str(get_root_path() / "bin"),
+            "ffmpeg_location": str(get_root_path() / "bin"),
         }
+
+        # YouTube 现已依赖外部 JS runtime 参与挑战求解。
+        # 当前环境检测到 Node.js 时，显式启用 node provider，
+        # 否则 yt-dlp 可能只能看到 storyboard 图片格式。
+        if shutil.which("node"):
+            ydl_opts["js_runtimes"] = {"node": {}}
 
         # 代理设置
         if proxy:
-            ydl_opts['proxy'] = proxy
+            ydl_opts["proxy"] = proxy
+
+        # Cookie 文件注入：--cookie 参数
+        if cookie_file:
+            cookie_path = Path(cookie_file)
+            if cookie_path.exists():
+                ydl_opts["cookiefile"] = str(cookie_path)
+                logger.info(f"已加载 Cookie 文件: {cookie_path}")
+            else:
+                logger.warning(f"指定的 Cookie 文件不存在，将忽略: {cookie_file}")
 
         # 仅在指定了浏览器时才注入 Cookie 配置
         if browser:
             logger.info(f"尝试从浏览器 {browser} 提取 Cookie")
-            ydl_opts['cookiesfrombrowser'] = (browser,)
+            ydl_opts["cookiesfrombrowser"] = (browser,)
 
         try:
-            cookie_msg = f"使用 {browser} cookies" if browser else "不使用 cookies"
+            if cookie_file:
+                cookie_msg = "使用 Cookie 文件"
+            elif browser:
+                cookie_msg = f"使用 {browser} cookies"
+            else:
+                cookie_msg = "不使用 cookies"
             logger.info(f"启动下载任务: {url} ({cookie_msg})")
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -162,17 +216,14 @@ class YtDlpDownloader:
                 # 处理合并流后缀可能变化的情况 (如 .mp4 变为 .mkv)
                 if not os.path.exists(file_path):
                     base_path = os.path.splitext(file_path)[0]
-                    for ext in ['.mp4', '.mkv', '.webm']:
+                    for ext in [".mp4", ".mkv", ".webm"]:
                         if os.path.exists(base_path + ext):
                             file_path = base_path + ext
                             break
 
                 abs_path = os.path.abspath(file_path)
                 logger.info(f"下载成功，文件路径: {abs_path}")
-                return {
-                    "path": abs_path,
-                    "title": title
-                }
+                return {"path": abs_path, "title": title}
 
         except yt_dlp.utils.DownloadError as e:
             original_msg = str(e)
@@ -193,9 +244,12 @@ if __name__ == "__main__":
     import time
 
     def my_progress_callback(data):
-        if data['status'] == 'downloading':
-            print(f"\r进度: {data['percentage']}% | 速度: {data['speed']} | ETA: {data['eta']}", end="")
-        elif data['status'] == 'finished':
+        if data["status"] == "downloading":
+            print(
+                f"\r进度: {data['percentage']}% | 速度: {data['speed']} | ETA: {data['eta']}",
+                end="",
+            )
+        elif data["status"] == "finished":
             print("\n下载任务已圆满完成！")
 
     def run_async_download(url):

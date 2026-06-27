@@ -38,8 +38,13 @@ DEFAULT_CONFIG = {
 =======
     "rewrite_style": "修正逐字稿",
     "custom_rewrite_prompt": "",
+<<<<<<< HEAD
     "http_proxy": ""
 >>>>>>> 555ca24 (修改润色设置)
+=======
+    "http_proxy": "",
+    "cookie_file": ""
+>>>>>>> 5f1a2c5 (fix bug)
 }
 
 

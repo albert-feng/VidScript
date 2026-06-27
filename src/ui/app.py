@@ -90,7 +90,7 @@ class App(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-    def _init_sidebar(self):
+    def _init_sidebar(self):  # noqa: C901
         """初始化侧边栏 (240px)"""
         self.sidebar_frame = ctk.CTkFrame(self, width=240, corner_radius=0)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
@@ -106,6 +106,9 @@ class App(ctk.CTk):
 
         # 加载持久化配置
         self.user_config = load_config()
+
+        # 检查下载路径是否可写，不可用则自动重置到文档目录
+        self._validate_download_path()
 
         # 配置组: 下载路径
         self.path_label = ctk.CTkLabel(
@@ -155,13 +158,43 @@ class App(ctk.CTk):
         self.proxy_entry.insert(0, saved_proxy)
         self.proxy_entry.grid(row=4, column=0, padx=20, pady=(2, 5), sticky="ew")
 
+        # 配置组: Cookie 文件
+        self.cookie_label = ctk.CTkLabel(
+            self.sidebar_frame,
+            text="Cookie 文件路径 (Netscape 格式)",
+            font=ctk.CTkFont(size=13, weight="bold"),
+        )
+        self.cookie_label.grid(row=5, column=0, padx=20, pady=(5, 2), sticky="w")
+
+        self.cookie_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
+        self.cookie_frame.grid(row=6, column=0, padx=20, pady=(2, 5), sticky="ew")
+        self.cookie_frame.grid_columnconfigure(0, weight=1)
+
+        self.cookie_entry = ctk.CTkEntry(
+            self.cookie_frame, height=28, font=ctk.CTkFont(size=11)
+        )
+        saved_cookie = self.user_config.get("cookie_file", "")
+        self.cookie_entry.insert(0, saved_cookie)
+        self.cookie_entry.configure(state="readonly")
+        self.cookie_entry.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+
+        self.cookie_browse_btn = ctk.CTkButton(
+            self.cookie_frame,
+            text="浏览",
+            width=40,
+            height=28,
+            font=ctk.CTkFont(size=11),
+            command=self._on_cookie_browse_click,
+        )
+        self.cookie_browse_btn.grid(row=0, column=1)
+
         # 配置组: 润色风格
         self.config_label = ctk.CTkLabel(
             self.sidebar_frame,
             text="润色风格",
             font=ctk.CTkFont(size=13, weight="bold"),
         )
-        self.config_label.grid(row=5, column=0, padx=20, pady=(5, 2), sticky="w")
+        self.config_label.grid(row=7, column=0, padx=20, pady=(5, 2), sticky="w")
 
         saved_style = self.user_config.get("rewrite_style", "修正逐字稿")
         # 兼容旧配置：如果不是列表，转为列表
@@ -169,7 +202,7 @@ class App(ctk.CTk):
             saved_style = [saved_style] if saved_style else ["修正逐字稿"]
 
         self.style_frame = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        self.style_frame.grid(row=6, column=0, padx=20, pady=(2, 5), sticky="ew")
+        self.style_frame.grid(row=8, column=0, padx=20, pady=(2, 5), sticky="ew")
 
         self.style_checkboxes = {}
         styles = ["不润色", "修正逐字稿", "口语化转换", "学术风提炼", "自定义"]
@@ -181,7 +214,6 @@ class App(ctk.CTk):
                 font=ctk.CTkFont(size=12),
                 checkbox_width=20,
                 checkbox_height=20,
-                command=lambda s=style: self._on_style_toggle(s),
             )
             chk.pack(anchor="w", pady=2)
             if style in saved_style:
@@ -239,10 +271,10 @@ class App(ctk.CTk):
         self.context_textbox.bind("<KeyRelease>", self._on_context_change)
         self.context_textbox.pack(padx=20, pady=(2, 10))
 
-        self.context_frame.grid(row=8, column=0, sticky="ew")
+        self.context_frame.grid(row=10, column=0, sticky="ew")
 
         self.spacer = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
-        self.spacer.grid(row=9, column=0, sticky="nsew")
+        self.spacer.grid(row=11, column=0, sticky="nsew")
 
         # 底部状态栏
         self.version_label = ctk.CTkLabel(
@@ -251,7 +283,7 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=11),
             text_color="#7F7F7F",
         )
-        self.version_label.grid(row=10, column=0, padx=20, pady=(0, 20))
+        self.version_label.grid(row=12, column=0, padx=20, pady=(0, 20))
 
     def _init_main_area(self):
         """初始化主工作区"""
@@ -425,6 +457,20 @@ class App(ctk.CTk):
             self.url_entry.insert(0, file_path)
             logger.info(f"用户选择了本地文件: {file_path}")
 
+    def _validate_download_path(self):
+        """启动时校验下载路径是否可写，不可写则重置为文档目录"""
+        from ..core.downloader import _is_dir_writable
+
+        current_path = self.user_config.get(
+            "download_path", str(Path.home() / "Documents")
+        )
+        path = Path(current_path)
+        if not _is_dir_writable(path):
+            logger.warning(f"下载目录不可写 ({current_path})，自动重置为文档目录")
+            new_path = str(Path.home() / "Documents")
+            self.user_config["download_path"] = new_path
+            update_config("download_path", new_path)
+
     def _on_browse_click(self):
         """打开文件夹选择对话框"""
         directory = filedialog.askdirectory()
@@ -436,6 +482,25 @@ class App(ctk.CTk):
             logger.info(f"用户选择了下载路径: {directory}")
             # 持久化保存路径
             update_config("download_path", directory)
+
+    def _on_cookie_browse_click(self):
+        """选择 Cookie 文件路径"""
+        file_path = filedialog.askopenfilename(
+            title="选择 Cookie 文件",
+            filetypes=[
+                ("Cookie Files", "*.txt;*.cookies"),
+                ("Text Files", "*.txt"),
+                ("All Files", "*.*"),
+            ],
+        )
+        if file_path:
+            self.cookie_entry.configure(state="normal")
+            self.cookie_entry.delete(0, "end")
+            self.cookie_entry.insert(0, file_path)
+            self.cookie_entry.configure(state="readonly")
+            logger.info(f"用户选择了 Cookie 文件: {file_path}")
+            # 持久化保存 Cookie 路径
+            update_config("cookie_file", file_path)
 
     def _on_open_dir_click(self):
         """打开下载目录"""
@@ -513,6 +578,10 @@ class App(ctk.CTk):
         # 获取代理配置
         http_proxy = self.proxy_entry.get().strip()
         update_config("http_proxy", http_proxy)
+
+        # 获取 Cookie 文件路径
+        cookie_file = self.cookie_entry.get().strip()
+        update_config("cookie_file", cookie_file)
 
         # 获取背景信息
         context = self.context_textbox.get("0.0", "end").strip()

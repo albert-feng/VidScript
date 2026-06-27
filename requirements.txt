@@ -1,9 +1,10 @@
 customtkinter
-yt-dlp
+yt-dlp>=2026.6.9
+yt-dlp-ejs>=0.8.0
 requests
 httpx
 python-dotenv
 nuitka
 flake8
-# pyinstaller (可选备份)
+# pyinstaller (optional)
 # pyinstaller
